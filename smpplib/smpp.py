@@ -44,5 +44,4 @@ def parse_pdu(data, **kwargs):
 
     new_pdu = make_pdu(command, **kwargs)
     new_pdu.parse(data)
-
     return new_pdu

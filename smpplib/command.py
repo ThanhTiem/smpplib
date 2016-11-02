@@ -29,6 +29,7 @@ from . import pdu
 from . import exceptions
 from . import consts
 from .ptypes import ostr, flag
+import collections
 
 logger = logging.getLogger('smpplib.command')
 
@@ -65,7 +66,7 @@ def get_optional_name(code):
     """Return optional_params name by given code. If code is unknown, raise
     UnkownCommandError exception"""
 
-    for key, value in consts.OPTIONAL_PARAMS.iteritems():
+    for key, value in consts.OPTIONAL_PARAMS.items():
         if value == code:
             return key
 
@@ -112,17 +113,17 @@ class Command(pdu.PDU):
 
     def _set_vars(self, **kwargs):
         """set attributes accordingly to kwargs"""
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             if not hasattr(self, key) or getattr(self, key) is None:
                 setattr(self, key, value)
 
     def generate_params(self):
         """Generate binary data from the object"""
 
-        if hasattr(self, 'prep') and callable(self.prep):
+        if hasattr(self, 'prep') and isinstance(self.prep, collections.Callable):
             self.prep()
 
-        body = ''
+        body = b''
 
         for field in self.params_order:
             #print field
@@ -168,24 +169,26 @@ class Command(pdu.PDU):
         if data:
             return struct.pack(fmt, data)
         else:
-            return chr(0)  # null terminator
+            return bytes([0])  # null terminator
 
     def _generate_string(self, field):
         """Generate string value"""
 
         field_value = getattr(self, field)
+        if field_value:
+            field_value=field_value.encode('utf8')#kiradd
 
         if hasattr(self.params[field], 'size'):
             size = self.params[field].size
-            value = field_value.ljust(size, chr(0))
+            value = field_value.ljust(size, bytes([0]))
         elif hasattr(self.params[field], 'max'):
             if len(field_value or '') > self.params[field].max:
                 field_value = field_value[0:self.params[field].max - 1]
 
             if field_value:
-                value = field_value + chr(0)
+                value = field_value + bytes([0])
             else:
-                value = chr(0)
+                value = bytes([0])
 
         setattr(self, field, field_value)
         return value
@@ -279,7 +282,7 @@ class Command(pdu.PDU):
         """Parse variable-length string from a PDU.
         Return (data, pos) tuple."""
 
-        end = data.find(chr(0), pos)
+        end = data.find(bytes([0]), pos)
         length = end - pos
 
         field_value = data[pos:pos + length]

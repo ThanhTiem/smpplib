@@ -1,8 +1,9 @@
 python-libsmpp
 ==============
 
-SMPP library for Python. Forked from [google code](https://code.google.com/p/smpplib/).
+SMPP library for Python3 . Forked from [google code](https://code.google.com/p/smpplib/).
 
+Adopded for russian TELE2 and python3
 Example:
 ```python
 import logging
@@ -16,7 +17,7 @@ import smpplib.consts
 logging.basicConfig(level='DEBUG')
 
 # Two parts, UCS2, SMS with UDH
-parts, encoding_flag, msg_type_flag = smpplib.gsm.make_parts(u'Привет мир!\n'*10)
+parts, encoding_flag, msg_type_flag = smpplib.gsm.make_parts('Привет мир!\n'*10)
 
 client = smpplib.client.Client('example.com', SOMEPORTNUMBER)
 

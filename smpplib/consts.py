@@ -58,6 +58,8 @@ SMPP_ESME_RDELIVERYFAILURE = 0x000000FE
 SMPP_ESME_RUNKNOWNERR = 0x000000FF
 
 
+
+
 #
 # Status description strings:
 #
@@ -111,7 +113,8 @@ DESCRIPTIONS = {
     SMPP_ESME_RMISSINGOPTPARAM: 'Expected Optional Parameter missing',
     SMPP_ESME_RINVOPTPARAMVAL: 'Invalid Optional Parameter Value',
     SMPP_ESME_RDELIVERYFAILURE: 'Delivery Failure (used data_sm_resp)',
-    SMPP_ESME_RUNKNOWNERR: 'Unknown Error'
+    SMPP_ESME_RUNKNOWNERR: 'Unknown Error',
+       1332:'no subscribe'
 }
 
 SMPP_CLIENT_STATE_CLOSED = 0
