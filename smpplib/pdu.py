@@ -34,7 +34,6 @@ def extract_command(pdu):
     """Extract command from a PDU"""
 
     code = struct.unpack('>L', pdu[4:8])[0]
-
     return command_codes.get_command_name(code)
 
 
@@ -42,6 +41,141 @@ class default_client(object):
     """Dummy client"""
     sequence = 0
 
+
+import binascii
+
+
+def chunks(li, n):
+    if not li:
+        return
+    yield li[:n]
+    yield from chunks(li[n:], n)
+
+
+class PDUParser():
+    def _readX(self, field, ln):
+        if len(self._raw) > self._pos:
+            pos = self._pos
+            self._pdu[field] = self._raw[pos:pos + ln]
+            import binascii
+
+            self._pos = pos + ln
+
+    def _read2(self, field):
+        if len(self._raw) > self._pos + 2:
+            pos = self._pos
+            self._pdu[field] = int(self._raw[pos:pos + 2], 16)
+            self._pos = pos + 2
+
+    def _readField(self, field):
+        pos = self._pos
+        self._pdu[field] = self._readString()
+        self._pos = pos + len(self._pdu[field]) * 2 + 2
+
+    def _readString(self):
+        st = ''
+        for chunk in chunks(self._raw[self._pos:], 2):
+            if chunk == b'00':
+                return st
+            else:
+                st += chr(int(chunk, 16))
+
+    def _readHeader(self):
+        for i, chunk in enumerate(chunks(self._raw, 8)):
+            if i == 0:
+                self._pdu['cmdlen'] = int(chunk, 16)
+                continue
+            if i == 1:
+                self._pdu['cmdid'] = chunk
+
+            if i == 2:
+                self._pdu['stat'] = int(chunk, 16)
+                continue
+            if i == 3:
+                self._pdu['seq'] = int(chunk, 16)
+                continue
+            self._pos = 8 * 4
+            break
+
+    def _parseCMD(self, st):
+        """
+        прарсер "[(type name)]"-> eval
+        type = s строка | 2 Int | ls Строка с длинной
+        name = String
+        """
+
+        state = 'read type'  # state =  read type | read s | read 2 | read ls
+
+        while len(st) != len(st.replace("  ", " ")):
+            st = st.replace("  ", " ")
+        for token in st.split(" "):
+            if state == "read type":
+                if token == 's':
+                    state = 'read s'
+                    continue
+                if token == '2':
+                    state = 'read 2'
+                    continue
+                if token == 'ls':
+                    state = 'read ls'
+                    continue
+
+            if state == 'read s':
+                self._readField(token)
+                state = 'read type'
+                continue
+            if state == 'read 2':
+                self._read2(token)
+                state = 'read type'
+                continue
+            if state == 'read ls':
+                self._readX(token, self._pdu['smlen'] * 2)
+                self._pdu[token] = binascii.unhexlify(self._pdu[token]).decode('utf-16-be')
+                state = 'read type'
+                continue
+
+    def __init__(self, pdu, mode='ascii'):
+        """
+        :param pdu:
+        :param mode: ascii/bin
+        """
+        if mode == 'bin':
+            import binascii
+            self._raw = binascii.b2a_hex(pdu)
+        else:
+            self._raw = pdu
+        self._pos = 0
+        self._pdu = {}
+        self._readHeader()
+
+    def parse(self):
+        # парсин _raw
+        # типы данных - s, 2, ls
+        # распарсеные значения складаываются в _pdu
+        if self._pdu['cmdid'] in [b'80000001', b'80000001', b'80000009']:
+            self._parseCMD('s sysid')
+        if self._pdu['cmdid'] in [b'00000001', b'00000002', b'00000009']:
+            self._parseCMD('s sysid s passwd s systype s intver 2 addrton 2 addrnpi s ddrrange')
+        if self._pdu['cmdid'] in [b'80000004', b'80000005', b'80000103']:
+            self._parseCMD('s msgid')
+        if self._pdu['cmdid'] in [b'00000004', b'00000005']:
+            self._parseCMD("s servtype 2 saddrton 2 saddrnpi s saddress 2 daddrton 2 daddrnpi s daddress " +
+                           "2 esm 2 pid 2 priority s sdt s valt 2 rdel 2 rip 2 dcs 2 smid 2 smlen ls sm")
+        if self._pdu['cmdid'] in [b'00000103']:
+            self._parseCMD('s servtype 2 saddrton 2 saddrnpi s saddress 2 daddrton 2 daddrnpi s daddress ' +
+                           "2 esm 2 rdel 2 dcs")
+        if self._pdu['cmdid'] in [b'00000003']:
+            self._parseCMD("s servtype 2 saddrton 2 saddrnpi s saddress")
+        if self._pdu['cmdid'] in [b'80000003']:
+            self._parseCMD("s servtype s findate 2 msgtdate 2 error")
+        if self._pdu['cmdid'] in [b'00000008']:
+            self._parseCMD("s servtype s msgid 2 saddrton 2 saddrnpi s saddress 2 daddrton 2 daddrnpi s daddress ")
+        if self._pdu['cmdid'] in [b'00000007']:
+            self._parseCMD("s msgid 2 saddrton 2 saddrnpi s saddress s sdt s valt 2 rdel 2 rip 2 smlen ls sm")
+        if self._pdu['cmdid'] in [b'00000102']:
+            self._parseCMD("2 saddrton 2 saddrnpi s saddress 2 eaddrton 2 eaddrnpi s eaddress")
+        self._pos = 32
+        return self._pdu
 
 class PDU(object):
     """PDU class"""
@@ -107,30 +241,23 @@ class PDU(object):
         return desc
 
     def parse(self, data):
+
         """Parse raw PDU"""
-
-        #
-        # PDU format:
-        #
-        # Header (16 bytes)
-        #   command_length: 4 bytes
-        #   command_id: 4 bytes
-        #   command_status: 4 bytes
-        #   sequence_number: 4 bytes
-        # Body (variable length)
-        #   parameter
-        #   parameter
-        #   ...
-
         header = data[0:16]
         chunks = struct.unpack('>LLLL', header)
+
         self.length = chunks[0]
         self.command = extract_command(data)
+
         self.status = chunks[2]
         self.sequence = chunks[3]
-
-        if len(data) > 16:
-            self.parse_params(data[16:])
+        if len(data) > 16:  # kir
+            try:
+                pdp = PDUParser(data, 'bin')
+                self.parsed = pdp.parse()
+                return self.parsed
+            except Exception as e:
+                print(e)
 
     def _unpack(self, fmt, data):
         """Unpack values. Uses struct.unpack. TODO: remove this"""
@@ -149,3 +276,11 @@ class PDU(object):
                              self.status, self.sequence)
 
         return header + body
+
+
+# 1
+#big1 = b'0000005b00000005000000002c046bde0001013739353331343938343836000001313539312331313635303538310003000000000000000001311383000200000202000ca0373930343334393030303002040002001a0501000123'
+# hearbeat
+#ok = b'00000010800000150000000000000001'
+# Тест
+#test_rur = b'0000006200000005000000002d9e68ce000101373935333134393834383600000131353931233137383838303237000300000000000008000804220435044104421383000200000202000ca037393034333439303030300204000200200501000123'
