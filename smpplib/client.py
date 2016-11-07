@@ -218,6 +218,7 @@ class Client(object):
         p = smpp.parse_pdu(raw_pdu, client=self)
 
         logger.debug('Read %s PDU', p.command)
+        p.data = dict()
 
         if p.is_error():
             return p
