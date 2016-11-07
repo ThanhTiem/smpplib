@@ -1,11 +1,16 @@
 python-libsmpp
 ==============
 
-SMPP library for Python3 . Forked from [google code](https://code.google.com/p/smpplib/).
+SMPP library for Python3 . Forked from [github](https://github.com/podshumok/python-smpplib)
 
-Adopded for russian TELE2 and python3
+Adopded for russian telecom providers and python3
 Example:
 ```python
+# coding=utf8
+
+import datetime
+import pytz
+
 import logging
 import sys
 
@@ -16,31 +21,34 @@ import smpplib.consts
 # if you want to know what's happening
 logging.basicConfig(level='DEBUG')
 
-# Two parts, UCS2, SMS with UDH
-parts, encoding_flag, msg_type_flag = smpplib.gsm.make_parts('Привет мир!\n'*10)
+client = smpplib.client.Client('123.456.789.101', 1123)
 
-client = smpplib.client.Client('example.com', SOMEPORTNUMBER)
 
 # Print when obtain message_id
-client.set_message_sent_handler(
-    lambda pdu: sys.stdout.write('sent {} {}\n'.format(pdu.sequence, pdu.message_id)))
-client.set_message_received_handler(
-    lambda pdu: sys.stdout.write('delivered {}\n'.format(pdu.receipted_message_id)))
+# client.set_message_sent_handler(
+#    lambda pdu: sys.stdout.write('sent {} {}\n'.format(pdu.sequence, pdu.message_id)))
+
+def getPdu(pdu):
+    print('Parsed pdu:', pdu.parsed)
+
+client.set_message_received_handler(getPdu)
 
 client.connect()
-client.bind_transceiver(system_id='login', password='secret')
+client.bind_transceiver(system_id='1234', password='5678')
+
+parts, encoding_flag, msg_type_flag = smpplib.gsm.make_parts('Руский из питона 3, кодировочку зажги!\n')
 
 for part in parts:
     pdu = client.send_message(
-        source_addr_ton=smpplib.consts.SMPP_TON_INTL,
-        #source_addr_npi=smpplib.consts.SMPP_NPI_ISDN,
-        # Make sure it is a byte string, not unicode:
-        source_addr='SENDERPHONENUM',
 
-        dest_addr_ton=smpplib.consts.SMPP_TON_INTL,
-        #dest_addr_npi=smpplib.consts.SMPP_NPI_ISDN,
+        source_addr_ton=smpplib.consts.SMPP_TON_NWSPEC,
+        source_addr_npi=smpplib.consts.SMPP_NPI_ISDN,
+        source_addr='1591',
+
+        dest_addr_ton=smpplib.consts.SMPP_TON_NATNL,
+        dest_addr_npi=smpplib.consts.SMPP_NPI_ISDN,
         # Make sure thease two params are byte strings, not unicode:
-        destination_addr='PHONENUMBER',
+        destination_addr='79531498486',
         short_message=part,
 
         data_coding=encoding_flag,
@@ -48,7 +56,9 @@ for part in parts:
         registered_delivery=True,
     )
     print(pdu.sequence)
+
 client.listen()
+
 ```
 You also may want to listen in a thread:
 ```python
