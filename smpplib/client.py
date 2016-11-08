@@ -26,6 +26,7 @@ import socket
 import struct
 import binascii
 import logging
+import threading
 
 from . import smpp
 from . import exceptions
@@ -68,6 +69,7 @@ class Client(object):
         """Initialize"""
 
         self.host = host
+        self.lock = threading.Lock()
         self.port = int(port)
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.settimeout(timeout)
