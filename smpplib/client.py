@@ -33,24 +33,25 @@ from . import consts
 
 logger = logging.getLogger('smpplib.client')
 
+
 class SimpleSequenceGenerator(object):
-    
     MIN_SEQUENCE = 0x00000001
     MAX_SEQUENCE = 0x7FFFFFFF
-    
+
     def __init__(self):
         self._sequence = self.MIN_SEQUENCE
-        
+
     @property
     def sequence(self):
         return self._sequence
-    
+
     def next_sequence(self):
         if self._sequence == self.MAX_SEQUENCE:
             self._sequence = self.MIN_SEQUENCE
         else:
             self._sequence += 1
         return self._sequence
+
 
 class Client(object):
     """SMPP client class"""
@@ -71,6 +72,7 @@ class Client(object):
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.settimeout(timeout)
         self.receiver_mode = False
+        self.message_source = None
         if sequence_generator is None:
             sequence_generator = SimpleSequenceGenerator()
         self.sequence_generator = sequence_generator
@@ -90,9 +92,49 @@ class Client(object):
     @property
     def sequence(self):
         return self.sequence_generator.sequence
-    
+
     def next_sequence(self):
         return self.sequence_generator.next_sequence()
+
+    def set_message_source(self, func):
+        """Set new function generate messages message sent event"""
+        self.message_source = func
+
+    def SendMessages(self):
+        self.lock.acquire()
+        if self.message_source:
+            messages = self.message_source()
+            print(messages)
+            if messages:
+                for sphone, dphone, message in messages:
+                    self.sendMessage(sphone, dphone, message)
+        self.lock.release()
+
+    def sendMessage(self, sphone, tphone, message):
+        from . import gsm
+
+        try:
+            parts, encoding_flag, msg_type_flag = gsm.make_parts(message)
+
+            for part in parts:
+                pdu = self.send_message(
+
+                    source_addr_ton=consts.SMPP_TON_NWSPEC,
+                    source_addr_npi=consts.SMPP_NPI_ISDN,
+                    source_addr=sphone,  # '1591',
+
+                    dest_addr_ton=consts.SMPP_TON_NATNL,
+                    dest_addr_npi=consts.SMPP_NPI_ISDN,
+                    # Make sure thease two params are byte strings, not unicode:
+                    destination_addr=tphone,
+                    short_message=part,
+
+                    data_coding=encoding_flag,
+                    esm_class=msg_type_flag,
+                    registered_delivery=True,
+                )
+        except Exception as e:
+            logging.error(e)
 
     def connect(self):
         """Connect to SMSC"""
@@ -123,7 +165,7 @@ class Client(object):
             logger.debug('Receiver mode')
             self.receiver_mode = True
 
-        #smppinst = smpp.get_instance()
+        # smppinst = smpp.get_instance()
         p = smpp.make_pdu(command_name, client=self, **kwargs)
 
         self.send_pdu(p)
@@ -134,7 +176,7 @@ class Client(object):
         if resp.is_error():
             raise exceptions.PDUError(
                 '({}) {}: {}'.format(resp.status, resp.command,
-                consts.DESCRIPTIONS.get(resp.status, 'Unknown code')), int(resp.status))
+                                     consts.DESCRIPTIONS.get(resp.status, 'Unknown code')), int(resp.status))
         return resp
 
     def bind_transmitter(self, **kwargs):
@@ -165,14 +207,14 @@ class Client(object):
 
         if not self.state in consts.COMMAND_STATES[p.command]:
             raise exceptions.PDUError("Command %s failed: %s" %
-                (p.command, consts.DESCRIPTIONS[consts.SMPP_ESME_RINVBNDSTS]))
+                                      (p.command, consts.DESCRIPTIONS[consts.SMPP_ESME_RINVBNDSTS]))
 
         logger.debug('Sending %s PDU', p.command)
 
         generated = p.generate()
 
         logger.debug('>>%s (%d bytes)', binascii.b2a_hex(generated),
-            len(generated))
+                     len(generated))
 
         sent = 0
 
@@ -236,14 +278,14 @@ class Client(object):
         """Handler for received message event"""
         self.message_received_handler(pdu=p)
         dsmr = smpp.make_pdu('deliver_sm_resp', client=self)
-        #, message_id=args['pdu'].sm_default_msg_id)
+        # , message_id=args['pdu'].sm_default_msg_id)
         dsmr.sequence = p.sequence
         self.send_pdu(dsmr)
 
     def _enquire_link_received(self):
         """Response to enquire_link"""
         ler = smpp.make_pdu('enquire_link_resp', client=self)
-        #, message_id=args['pdu'].sm_default_msg_id)
+        # , message_id=args['pdu'].sm_default_msg_id)
         self.send_pdu(ler)
         logger.debug("Link Enquiry...")
 
@@ -272,6 +314,7 @@ class Client(object):
 
         while True:
             try:
+                self.SendMessages()
                 try:
                     p = self.read_pdu()
                 except socket.timeout:
@@ -283,7 +326,7 @@ class Client(object):
                 if p.is_error():
                     raise exceptions.PDUError(
                         '({}) {}: {}'.format(p.status, p.command,
-                        consts.DESCRIPTIONS.get(p.status, 'Unknown status')), int(p.status))
+                                             consts.DESCRIPTIONS.get(p.status, 'Unknown status')), int(p.status))
 
                 if p.command == 'unbind':  # unbind_res
                     logger.info('Unbind command received')
@@ -303,7 +346,7 @@ class Client(object):
                         and len(e.args) > 1 \
                         and e.args[1] in ignore_error_codes:
                     logging.warning('(%d) %s. Ignored.' %
-                        (e.args[1], e.args[0]))
+                                    (e.args[1], e.args[0]))
                 else:
                     raise
 
