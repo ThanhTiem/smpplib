@@ -130,12 +130,10 @@ class PDUParser():
                 continue
             if state == 'read ls':
                 self._readX(token, self._pdu['smlen'] * 2)
-
                 if self._pdu['dcs']==8:
                     self._pdu[token] = binascii.unhexlify(self._pdu[token]).decode('utf-16-be')
                 if self._pdu['dcs'] == 0:
                     self._pdu[token] = binascii.unhexlify(self._pdu[token]).decode('latin1')
-
 
                 state = 'read type'
                 continue
