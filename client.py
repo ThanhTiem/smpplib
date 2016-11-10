@@ -106,9 +106,9 @@ class Client(object):
         self.lock.acquire()
         if self.message_source:
             messages = self.message_source()
-            print(messages)
             if messages:
                 for sphone, dphone, message in messages:
+                    logging.debug(str((sphone, dphone, message )))
                     self.sendMessage(sphone, dphone, message)
         self.lock.release()
 
