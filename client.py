@@ -108,7 +108,6 @@ class Client(object):
             messages = self.message_source()
             if messages:
                 for sphone, dphone, message in messages:
-                    logging.debug(str((sphone, dphone, message )))
                     self.sendMessage(sphone, dphone, message)
         self.lock.release()
 
@@ -137,7 +136,7 @@ class Client(object):
 
                     source_addr_ton=cfg['source_addr_ton'],
                     source_addr_npi=cfg['source_addr_npi'],
-                    source_addr=sphone,  # '1591',
+                    source_addr=sphone,
                     dest_addr_ton=cfg['dest_addr_ton'],
                     dest_addr_npi=cfg['dest_addr_npi'],
                     # Make sure thease two params are byte strings, not unicode:

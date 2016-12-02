@@ -152,7 +152,10 @@ class Command(pdu.PDU):
                 elif param.type is ostr:
                     value = self._generate_ostring(field)
                     if value:
-                        body += value#.encode('utf8')
+                        if isinstance(value,bytes):
+                            body += value
+                        else:
+                            body += value.encode('utf8')
             #print value
         return body
 
