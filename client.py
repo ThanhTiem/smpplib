@@ -116,18 +116,29 @@ class Client(object):
         cfg = dict()
 
         nonums = "".join(filter(lambda x: not x.isdigit(), sphone))
-
+        if len(nonums) > 0:
+            cfg['source_addr_ton'] = consts.SMPP_TON_ALNUM
+            cfg['source_addr_npi'] = consts.SMPP_TON_UNK
+            cfg['dest_addr_ton'] = consts.SMPP_TON_INTL
+            cfg['dest_addr_npi'] = consts.SMPP_NPI_ISDN
+        else:
+            cfg['source_addr_ton'] = consts.SMPP_TON_UNK
+            cfg['source_addr_npi'] = consts.SMPP_NPI_ISDN
+            cfg['dest_addr_ton'] = consts.SMPP_TON_INTL
+            cfg['dest_addr_npi'] = consts.SMPP_NPI_ISDN
+        """
         if len(nonums)>0:
             cfg['source_addr_ton'] = consts.SMPP_TON_ALNUM
             cfg['source_addr_npi'] = consts.SMPP_TON_UNK
             cfg['dest_addr_ton'] = consts.SMPP_TON_INTL
             cfg['dest_addr_npi'] = consts.SMPP_NPI_ISDN
         else:
+
             cfg['source_addr_ton']=consts.SMPP_TON_NWSPEC
             cfg['source_addr_npi'] = consts.SMPP_NPI_ISDN
             cfg['dest_addr_ton'] = consts.SMPP_TON_NATNL
             cfg['dest_addr_npi'] = consts.SMPP_NPI_ISDN
-
+        """
         try:
             parts, encoding_flag, msg_type_flag = gsm.make_parts(message)
 
