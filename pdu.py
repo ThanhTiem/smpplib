@@ -250,20 +250,21 @@ class PDU(object):
     def parse(self, data):
 
         """Parse raw PDU"""
+
         header = data[0:16]
         chunks = struct.unpack('>LLLL', header)
-
         self.length = chunks[0]
         self.command = extract_command(data)
-
         self.status = chunks[2]
         self.sequence = chunks[3]
-        if len(data) > 16:  # kir
+
+        if len(data) > 30:
             try:
                 pdp = PDUParser(data, 'bin')
                 self.parsed = pdp.parse()
                 return self.parsed
             except Exception as e:
+                print()
                 print(e)
 
     def _unpack(self, fmt, data):

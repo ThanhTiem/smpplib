@@ -283,7 +283,6 @@ class Client(object):
         logger.debug('<<%s (%d bytes)', binascii.b2a_hex(raw_pdu), len(raw_pdu))
 
         p = smpp.parse_pdu(raw_pdu, client=self)
-
         logger.debug('Read %s PDU', p.command)
         p.data = dict()
 
@@ -336,7 +335,6 @@ class Client(object):
 
     def listen(self, ignore_error_codes=None):
         """Listen for PDUs and act"""
-
         while True:
             try:
                 self.SendMessages()
