@@ -56,7 +56,7 @@ def chunks(li, n):
 
 class PDUParser():
     def _readX(self, field, ln):
-        if len(self._raw) > self._pos:
+        if len(self._raw) >= self._pos + ln:
             pos = self._pos
             self._pdu[field] = self._raw[pos:pos + ln]
             import binascii
@@ -64,10 +64,16 @@ class PDUParser():
             self._pos = pos + ln
 
     def _read2(self, field):
-        if len(self._raw) > self._pos + 2:
+        if len(self._raw) >= self._pos + 2:
             pos = self._pos
             self._pdu[field] = int(self._raw[pos:pos + 2], 16)
             self._pos = pos + 2
+
+    def _read4(self, field):
+        if len(self._raw) >= self._pos + 4:
+            pos = self._pos
+            self._pdu[field] = int(self._raw[pos:pos + 4], 16)
+            self._pos = pos + 4
 
     def _readField(self, field):
         pos = self._pos
@@ -111,6 +117,9 @@ class PDUParser():
         while len(st) != len(st.replace("  ", " ")):
             st = st.replace("  ", " ")
         for token in st.split(" "):
+            if self._pos>=len(self._raw):
+                #print('overflow', self._pos)
+                break
             if state == "read type":
                 if token == 's':
                     state = 'read s'
@@ -118,8 +127,14 @@ class PDUParser():
                 if token == '2':
                     state = 'read 2'
                     continue
+                if token == '4':
+                    state = 'read 4'
+                    continue
                 if token == 'ls':
                     state = 'read ls'
+                    continue
+                if token == 'pl':
+                    state = 'read payload'
                     continue
 
             if state == 'read s':
@@ -127,7 +142,13 @@ class PDUParser():
                 state = 'read type'
                 continue
             if state == 'read 2':
+                if token=='smlen':
+                    print('smlen')
                 self._read2(token)
+                state = 'read type'
+                continue
+            if state == 'read 4':
+                self._read4(token)
                 state = 'read type'
                 continue
             if state == 'read ls':
@@ -136,7 +157,14 @@ class PDUParser():
                     self._pdu[token] = binascii.unhexlify(self._pdu[token]).decode('utf-16-be')
                 if self._pdu['dcs'] == 0:
                     self._pdu[token] = binascii.unhexlify(self._pdu[token]).decode('latin1')
-
+                state = 'read type'
+                continue
+            if state == 'read payload':
+                self._readX(token, self._pdu['paylen'] * 2)
+                if self._pdu['dcs'] == 8:
+                    self._pdu[token] = binascii.unhexlify(self._pdu[token]).decode('utf-16-be')
+                if self._pdu['dcs'] == 0:
+                    self._pdu[token] = binascii.unhexlify(self._pdu[token]).decode('latin1')
                 state = 'read type'
                 continue
 
@@ -155,7 +183,7 @@ class PDUParser():
         self._readHeader()
 
     def parse(self):
-        # парсин _raw
+        # парсинг _raw
         # типы данных - s, 2, ls
         # распарсеные значения складаываются в _pdu
         if self._pdu['cmdid'] in [b'80000001', b'80000001', b'80000009']:
@@ -166,7 +194,8 @@ class PDUParser():
             self._parseCMD('s msgid')
         if self._pdu['cmdid'] in [b'00000004', b'00000005']:
             self._parseCMD("s servtype 2 saddrton 2 saddrnpi s saddress 2 daddrton 2 daddrnpi s daddress " +
-                           "2 esm 2 pid 2 priority s sdt s valt 2 rdel 2 rip 2 dcs 2 smid 2 smlen ls sm")
+                           "2 esm 2 pid 2 priority s sdt s valt 2 rdel 2 rip 2 dcs 2 smid 2 smlen ls sm "+
+                           "4 tag 4 paylen pl payload")
         if self._pdu['cmdid'] in [b'00000103']:
             self._parseCMD('s servtype 2 saddrton 2 saddrnpi s saddress 2 daddrton 2 daddrnpi s daddress ' +
                            "2 esm 2 rdel 2 dcs")
