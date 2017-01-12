@@ -60,7 +60,6 @@ def make_parts(text):
         parts = []
         ipart = 1
         uid = random.randint(0, 255)
-        print(starts,"asd")
         for start in starts:
 
             parts.append(b''.join((b'\x05\x00\x03', bytes([uid]),
