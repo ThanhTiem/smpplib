@@ -291,7 +291,6 @@ class PDU(object):
                 self.parsed = pdp.parse()
                 return self.parsed
             except Exception as e:
-                print()
                 print(e)
 
     def _unpack(self, fmt, data):
