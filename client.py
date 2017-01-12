@@ -118,33 +118,18 @@ class Client(object):
         nonums = "".join(filter(lambda x: not x.isdigit(), sphone))
         if len(nonums) > 0:
             cfg['source_addr_ton'] = consts.SMPP_TON_ALNUM
-            cfg['source_addr_npi'] = consts.SMPP_TON_UNK
+            cfg['source_addr_npi'] = consts.SMPP_NPI_UNK
             cfg['dest_addr_ton'] = consts.SMPP_TON_INTL
             cfg['dest_addr_npi'] = consts.SMPP_NPI_ISDN
         else:
-            cfg['source_addr_ton'] = consts.SMPP_TON_UNK
-            cfg['source_addr_npi'] = consts.SMPP_NPI_ISDN
-            cfg['dest_addr_ton'] = consts.SMPP_TON_INTL
-            cfg['dest_addr_npi'] = consts.SMPP_NPI_ISDN
-        """
-        if len(nonums)>0:
-            cfg['source_addr_ton'] = consts.SMPP_TON_ALNUM
-            cfg['source_addr_npi'] = consts.SMPP_TON_UNK
-            cfg['dest_addr_ton'] = consts.SMPP_TON_INTL
-            cfg['dest_addr_npi'] = consts.SMPP_NPI_ISDN
-        else:
-
-            cfg['source_addr_ton']=consts.SMPP_TON_NWSPEC
-            cfg['source_addr_npi'] = consts.SMPP_NPI_ISDN
-            cfg['dest_addr_ton'] = consts.SMPP_TON_NATNL
-            cfg['dest_addr_npi'] = consts.SMPP_NPI_ISDN
-        """
+            cfg['source_addr_ton'] = 5#consts.SMPP_TON_UNK
+            cfg['source_addr_npi'] = 0#consts.SMPP_NPI_ISDN
+            cfg['dest_addr_ton'] = 1#consts.SMPP_TON_INTL
+            cfg['dest_addr_npi'] = 1#consts.SMPP_NPI_ISDN
         try:
             parts, encoding_flag, msg_type_flag = gsm.make_parts(message)
-
             for part in parts:
                 pdu = self.send_message(
-
                     source_addr_ton=cfg['source_addr_ton'],
                     source_addr_npi=cfg['source_addr_npi'],
                     source_addr=sphone,
