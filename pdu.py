@@ -192,7 +192,7 @@ class PDUParser():
             self._parseCMD('s msgid')
         if self._pdu['cmdid'] in [b'00000004', b'00000005']:
             self._parseCMD("s servtype 2 saddrton 2 saddrnpi s saddress 2 daddrton 2 daddrnpi s daddress " +
-                           "2 esm 2 pid 2 priority s sdt s valt 2 rdel 2 rip 2 dcs 2 smid 2 smlen ls sm "+
+                           "2 esm 2 pid 2 priority s sdt s valt 2 rdel 2 rip 2 dcs 2 smid 2 smlen ls sm " +
                            "4 tag 4 paylen pl payload")
         if self._pdu['cmdid'] in [b'00000103']:
             self._parseCMD('s servtype 2 saddrton 2 saddrnpi s saddress 2 daddrton 2 daddrnpi s daddress ' +
