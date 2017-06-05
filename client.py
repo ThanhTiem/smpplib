@@ -22,15 +22,15 @@
 
 """SMPP client module"""
 
-import socket
-import struct
 import binascii
 import logging
+import socket
+import struct
 import threading
 
-from . import smpp
-from . import exceptions
 from . import consts
+from . import exceptions
+from . import smpp
 
 logger = logging.getLogger('smpplib.client')
 
@@ -122,10 +122,10 @@ class Client(object):
             cfg['dest_addr_ton'] = consts.SMPP_TON_INTL
             cfg['dest_addr_npi'] = consts.SMPP_NPI_ISDN
         else:
-            cfg['source_addr_ton'] = 5#consts.SMPP_TON_UNK
-            cfg['source_addr_npi'] = 0#consts.SMPP_NPI_ISDN
-            cfg['dest_addr_ton'] = 1#consts.SMPP_TON_INTL
-            cfg['dest_addr_npi'] = 1#consts.SMPP_NPI_ISDN
+            cfg['source_addr_ton'] = 5  # consts.SMPP_TON_UNK
+            cfg['source_addr_npi'] = 0  # consts.SMPP_NPI_ISDN
+            cfg['dest_addr_ton'] = 1  # consts.SMPP_TON_INTL
+            cfg['dest_addr_npi'] = 1  # consts.SMPP_NPI_ISDN
         try:
             parts, encoding_flag, msg_type_flag = gsm.make_parts(message)
             for part in parts:
@@ -186,7 +186,9 @@ class Client(object):
         if resp.is_error():
             raise exceptions.PDUError(
                 '({}) {}: {}'.format(resp.status, resp.command,
-                                     consts.DESCRIPTIONS.get(resp.status, 'Unknown code')), int(resp.status))
+                                     consts.DESCRIPTIONS.get(resp.status,
+                                                             'Unknown code')),
+                int(resp.status))
         return resp
 
     def bind_transmitter(self, **kwargs):
@@ -217,7 +219,8 @@ class Client(object):
 
         if not self.state in consts.COMMAND_STATES[p.command]:
             raise exceptions.PDUError("Command %s failed: %s" %
-                                      (p.command, consts.DESCRIPTIONS[consts.SMPP_ESME_RINVBNDSTS]))
+                                      (p.command, consts.DESCRIPTIONS[
+                                          consts.SMPP_ESME_RINVBNDSTS]))
 
         logger.debug('Sending %s PDU', p.command)
 
@@ -292,9 +295,10 @@ class Client(object):
         dsmr.sequence = p.sequence
         self.send_pdu(dsmr)
 
-    def _enquire_link_received(self):
+    def _enquire_link_received(self, pdu):
         """Response to enquire_link"""
         ler = smpp.make_pdu('enquire_link_resp', client=self)
+        ler.sequence = pdu.sequence
         # , message_id=args['pdu'].sm_default_msg_id)
         self.send_pdu(ler)
         logger.debug("Link Enquiry...")
@@ -335,7 +339,9 @@ class Client(object):
                 if p.is_error():
                     raise exceptions.PDUError(
                         '({}) {}: {}'.format(p.status, p.command,
-                                             consts.DESCRIPTIONS.get(p.status, 'Unknown status')), int(p.status))
+                                             consts.DESCRIPTIONS.get(p.status,
+                                                                     'Unknown status')),
+                        int(p.status))
 
                 if p.command == 'unbind':  # unbind_res
                     logger.info('Unbind command received')
@@ -345,7 +351,7 @@ class Client(object):
                 elif p.command == 'deliver_sm':
                     self._message_received(p)
                 elif p.command == 'enquire_link':
-                    self._enquire_link_received()
+                    self._enquire_link_received(pdu=p)
                 elif p.command == 'enquire_link_resp':
                     pass
                 else:
