@@ -5,7 +5,6 @@ import random
 from . import consts
 from . import exceptions
 
-
 # from http://stackoverflow.com/questions/2452861/python-library-for-converting-plain-text-ascii-into-gsm-7-bit-character-set
 gsm = ("@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ\x1bÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>"
        "?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ`¿abcdefghijklmnopqrstuvwxyzäöñüà")
@@ -35,6 +34,7 @@ def gsm_encode(plaintext, hex=False):
 
 def make_parts(text):
     """Returns tuple(parts, encoding, esm_class)"""
+    eng_text = False
     try:
         text = gsm_encode(text)
 
@@ -42,6 +42,7 @@ def make_parts(text):
         need_split = len(text) > consts.SEVENBIT_SIZE
         partsize = consts.SEVENBIT_MP_SIZE
         encode = lambda s: s
+        eng_text = True
     except EncodeError:
         encoding = consts.SMPP_ENCODING_ISO10646
         need_split = len(text) > consts.UCS2_SIZE
@@ -51,6 +52,8 @@ def make_parts(text):
     esm_class = consts.SMPP_MSGTYPE_DEFAULT
 
     if need_split:
+        if eng_text:
+            encode = lambda x: bytes(x, 'utf8')
         esm_class = consts.SMPP_GSMFEAT_UDHI
 
         starts = tuple(range(0, len(text), partsize))
@@ -61,10 +64,9 @@ def make_parts(text):
         ipart = 1
         uid = random.randint(0, 255)
         for start in starts:
-
             parts.append(b''.join((b'\x05\x00\x03', bytes([uid]),
                                    bytes([len(starts)]), bytes([ipart]),
-                                  encode(text[start:start + partsize]))))
+                                   encode(text[start:start + partsize]))))
             ipart += 1
     else:
         parts = (encode(text),)
